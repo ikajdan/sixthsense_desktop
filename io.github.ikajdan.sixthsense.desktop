@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SixthSense
+Comment=Sense HAT server API client
+Icon=sixthsense
+Exec=sixthsense.py
+
