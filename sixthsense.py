@@ -15,6 +15,97 @@ port_number_pref = 8000
 refresh_time_pref = 1000
 
 
+class SensorsView(Gtk.Box):
+    def __init__(self):
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=6)
+
+        self.scrolled_window = Gtk.ScrolledWindow()
+        self.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.list_store = Gtk.ListStore(str, float, str)
+        self.pack_start(self.scrolled_window, True, True, 0)
+
+        self.updateSensorsData()
+
+    def updateSensorsData(self):
+        api_endpoint = (
+            "http://" + host_name_pref + ":" + str(port_number_pref) + "/sensors/all"
+        )
+        response = requests.get(api_endpoint)
+        if response.status_code == 200:
+            data = response.json()
+            for key, value in data.items():
+                name = value.get("name", key)
+                unit = (
+                    value.get("unit", "-")
+                    if not isinstance(value.get("unit"), float)
+                    else "-"
+                )
+                self.list_store.append([name, value["value"], unit])
+
+        self.tree_view = Gtk.TreeView(model=self.list_store)
+
+        self.name_column = Gtk.TreeViewColumn("Name")
+        self.value_column = Gtk.TreeViewColumn("Value")
+        self.unit_column = Gtk.TreeViewColumn("Unit")
+
+        self.name_renderer = Gtk.CellRendererText()
+        self.value_renderer = Gtk.CellRendererText()
+        self.unit_renderer = Gtk.CellRendererText()
+
+        self.name_column.pack_start(self.name_renderer, True)
+        self.value_column.pack_start(self.value_renderer, True)
+        self.unit_column.pack_start(self.unit_renderer, True)
+
+        self.name_column.add_attribute(self.name_renderer, "text", 0)
+        self.value_column.add_attribute(self.value_renderer, "text", 1)
+        self.unit_column.add_attribute(self.unit_renderer, "text", 2)
+
+        self.tree_view.append_column(self.name_column)
+        self.tree_view.append_column(self.value_column)
+        self.tree_view.append_column(self.unit_column)
+
+        self.scrolled_window.add(self.tree_view)
+
+        GLib.timeout_add(refresh_time_pref, self.updateSensorsData)
+
+
+class ControlView(Gtk.Box):
+    def __init__(self):
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=20)
+
+        self.grid = Gtk.Grid()
+        self.grid.set_column_homogeneous(True)
+        self.grid.set_row_spacing(6)
+        self.pack_start(self.grid, False, False, 0)
+
+        self.led_label = Gtk.Label(label="LED:")
+        self.color_label = Gtk.Label(label="Color:")
+
+        self.led_entry = Gtk.Entry()
+        self.color_entry = Gtk.Entry()
+
+        self.led_entry.set_text("0")
+
+        apply_button = Gtk.Button(label="Apply")
+        apply_button.connect("clicked", self.set_led_grid)
+
+        self.grid.attach(self.create_aligned_label(self.led_label), 0, 0, 2, 1)
+        self.grid.attach(self.led_entry, 0, 1, 2, 1)
+        self.grid.attach(self.create_aligned_label(self.color_label), 0, 2, 2, 1)
+        self.grid.attach(self.color_entry, 0, 3, 2, 1)
+        self.pack_end(apply_button, False, False, 0)
+
+    def create_aligned_label(self, label):
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        hbox.pack_start(label, False, False, 0)
+        return hbox
+
+    def set_led_grid(self, label):
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        hbox.pack_start(label, False, False, 0)
+        return hbox
+
+
 class SettingsView(Gtk.Box):
     def __init__(self):
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=20)
@@ -72,22 +163,25 @@ class SixthSense(Gtk.Window):
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
         self.stack.set_transition_duration(500)
 
-        self.view1 = Gtk.Label(label="Sensors")
-        self.view2 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.view3 = Gtk.Label(label="Control")
-        self.settings_view = Gtk.Label(label="Settings")
+        self.sensors_view = SensorsView()
+        self.plots_view = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.control_view = ControlView()
         self.settings_view = SettingsView()
 
-        self.stack.add_named(self.view1, "Sensors")
-        self.stack.add_named(self.view2, "Plots")
-        self.stack.add_named(self.view3, "Control")
+        self.stack.add_named(self.sensors_view, "Sensors")
+        self.stack.add_named(self.plots_view, "Plots")
+        self.stack.add_named(self.control_view, "Control")
         self.stack.add_named(self.settings_view, "Settings")
 
         # TODO: Move this to a separate function
-        self.view2.set_margin_top(20)
-        self.view2.set_margin_end(10)
-        self.view2.set_margin_bottom(20)
-        self.view2.set_margin_start(10)
+        self.plots_view.set_margin_top(20)
+        self.plots_view.set_margin_end(10)
+        self.plots_view.set_margin_bottom(20)
+        self.plots_view.set_margin_start(10)
+        self.control_view.set_margin_top(20)
+        self.control_view.set_margin_end(10)
+        self.control_view.set_margin_bottom(20)
+        self.control_view.set_margin_start(10)
         self.settings_view.set_margin_top(20)
         self.settings_view.set_margin_end(10)
         self.settings_view.set_margin_bottom(20)
@@ -120,7 +214,7 @@ class SixthSense(Gtk.Window):
 
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
-        self.view2.pack_start(self.canvas, True, True, 0)
+        self.plots_view.pack_start(self.canvas, True, True, 0)
 
         self.x_data = []
         self.temperature_data = []
@@ -135,11 +229,9 @@ class SixthSense(Gtk.Window):
         self.sample_counter = 0
         self.updateSensorsPlot()
 
-        # Vertical box layout
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(self.box)
 
-        # Horizontal box for buttons
         buttons_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
         self.box.pack_start(buttons_box, False, False, 0)
         buttons_box.set_margin_top(10)
@@ -158,14 +250,12 @@ class SixthSense(Gtk.Window):
         self.stack.set_visible_child_name(view_name)
 
     def updateSensorsPlot(self):
-        # Fetch data from the REST API
-
         api_endpoint = (
             "http://" + host_name_pref + ":" + str(port_number_pref) + "/sensors/all"
         )
+
         response = requests.get(api_endpoint)
 
-        # Parse the data and add it to the plot
         self.temperature = response.json()["temperature"]["value"]
         self.pressure = response.json()["pressure"]["value"]
         self.humidity = response.json()["humidity"]["value"]
