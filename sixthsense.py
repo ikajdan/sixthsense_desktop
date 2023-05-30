@@ -34,12 +34,12 @@ class SensorsView(Gtk.Box):
         if response.status_code == 200:
             data = response.json()
             for key, value in data.items():
-                name = value.get("name", key)
-                unit = (
-                    value.get("unit", "-")
-                    if not isinstance(value.get("unit"), float)
-                    else "-"
-                )
+                name = value["name"]
+                if name == "":
+                    name = key
+                unit = value.get("unit", "")
+                if unit == "":
+                    unit = "-"
                 self.list_store.append([name, value["value"], unit])
 
         self.tree_view = Gtk.TreeView(model=self.list_store)
