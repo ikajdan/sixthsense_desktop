@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -105,7 +107,7 @@ class PlotsView(Gtk.Box):
         self.humidity_data = []
 
         self.axis = self.figure.add_subplot(1, 1, 1)
-        self.axis.set_title("Temperature [°C]", color="#d3d3d3")
+        self.axis.set_title("Temperature [°C]", color="#D3D3D3")
         self.line1 = self.axis.plot([], [], marker="o", color="#F66151")[0]
         self.axis.grid(axis="y")
         # self.figure.subplots_adjust(top=1, right=0.91, bottom=0.05, left=0.09)
@@ -151,32 +153,35 @@ class ControlView(Gtk.Box):
     def __init__(self):
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
-        self.set_margin_top(MARGIN)
-        self.set_margin_end(MARGIN)
-        self.set_margin_bottom(MARGIN)
-        self.set_margin_start(MARGIN)
+        self.led_color = (0, 0, 0, 0)
+
+        self.set_margin_top(MARGIN * 10)
+        self.set_margin_end(MARGIN * 20)
+        self.set_margin_bottom(MARGIN * 10)
+        self.set_margin_start(MARGIN * 20)
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
-        self.grid.set_row_spacing(6)
+        self.grid.set_row_spacing(MARGIN)
         self.pack_start(self.grid, False, False, 0)
 
         self.id_label = Gtk.Label(label="LED:")
+        self.id_spinbox = Gtk.SpinButton()
+        self.id_spinbox.set_range(0, 63)
+        self.id_spinbox.set_increments(1, 10)
+        self.id_spinbox.set_value(0)
+
         self.color_label = Gtk.Label(label="Color:")
-
-        self.id_entry = Gtk.Entry()
-        self.color_entry = Gtk.Entry()
-
-        self.id_entry.set_text("0")
-        self.color_entry.set_text("FF0000")
+        self.color_picker_button = Gtk.Button(label="Pick a Color")
+        self.color_picker_button.connect("clicked", self.open_color_picker)
 
         self.apply_button = Gtk.Button(label="Apply")
         self.apply_button.connect("clicked", self.set_led_grid)
 
         self.grid.attach(self.create_aligned_label(self.id_label), 0, 0, 2, 1)
-        self.grid.attach(self.id_entry, 0, 1, 2, 1)
+        self.grid.attach(self.id_spinbox, 0, 1, 2, 1)
         self.grid.attach(self.create_aligned_label(self.color_label), 0, 2, 2, 1)
-        self.grid.attach(self.color_entry, 0, 3, 2, 1)
+        self.grid.attach(self.color_picker_button, 0, 3, 2, 1)
         self.pack_end(self.apply_button, False, False, 0)
 
     def create_aligned_label(self, label):
@@ -184,19 +189,53 @@ class ControlView(Gtk.Box):
         hbox.pack_start(label, False, False, 0)
         return hbox
 
+    def open_color_picker(self, widget):
+        color_dialog = Gtk.ColorChooserDialog(title="Select a color", parent=window)
+        color_dialog.set_transient_for(window)
+
+        color_dialog.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
+        )
+
+        current_color = (
+            self.color_picker_button.get_style_context().get_background_color(
+                Gtk.StateFlags.NORMAL
+            )
+        )
+
+        color_dialog.set_rgba(current_color)
+        response = color_dialog.run()
+
+        if response == Gtk.ResponseType.OK:
+            self.led_color = color_dialog.get_rgba()
+
+            self.color_picker_button.get_style_context().add_class("custom-button")
+            self.color_picker_button.get_style_context().save()
+            self.color_picker_button.override_background_color(
+                Gtk.StateFlags.NORMAL, self.led_color
+            )
+
+        color_dialog.destroy()
+
     def set_led_grid(self, widget):
-        led_id = self.id_entry.get_text()
-        led_color = self.color_entry.get_text()
+        led_id = int(self.id_spinbox.get_value())
+        led_color = "{:02x}{:02x}{:02x}".format(
+            int(self.led_color.red * 255),
+            int(self.led_color.green * 255),
+            int(self.led_color.blue * 255),
+        )
+
         api_endpoint = (
             "http://"
             + HOST_NAME_PREF
             + ":"
             + str(PORT_NUMBER_PREF)
             + "/leds/set/"
-            + led_id
+            + str(led_id)
             + "?hex="
-            + led_color
+            + str(led_color)
         )
+
         requests.get(api_endpoint)
 
 
@@ -204,14 +243,14 @@ class SettingsView(Gtk.Box):
     def __init__(self):
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
-        self.set_margin_top(MARGIN)
-        self.set_margin_end(MARGIN)
-        self.set_margin_bottom(MARGIN)
-        self.set_margin_start(MARGIN)
+        self.set_margin_top(MARGIN * 10)
+        self.set_margin_end(MARGIN * 20)
+        self.set_margin_bottom(MARGIN * 10)
+        self.set_margin_start(MARGIN * 20)
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
-        self.grid.set_row_spacing(6)
+        self.grid.set_row_spacing(MARGIN)
         self.pack_start(self.grid, False, False, 0)
 
         self.host_name_label = Gtk.Label(label="Hostname:")
