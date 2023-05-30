@@ -17,7 +17,7 @@ refresh_time_pref = 1000
 
 class SensorsView(Gtk.Box):
     def __init__(self):
-        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
         self.scrolled_window = Gtk.ScrolledWindow()
         self.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -69,9 +69,88 @@ class SensorsView(Gtk.Box):
         GLib.timeout_add(refresh_time_pref, self.updateSensorsData)
 
 
+class PlotsView(Gtk.Box):
+    def __init__(self):
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
+
+        self.set_margin_top(20)
+        self.set_margin_end(10)
+        self.set_margin_bottom(10)
+        self.set_margin_start(10)
+
+        # Create a plot
+        native_theme = {
+            "text.color": "#454242",
+            "xtick.color": "#242424",
+            "ytick.color": "#454242",
+            "grid.color": "#454242",
+            "axes.facecolor": "#242424",
+            "axes.edgecolor": "#242424",
+            "axes.labelcolor": "#454242",
+            "figure.facecolor": "#242424",
+            "figure.edgecolor": "#242424",
+            "grid.linestyle": "--",
+        }
+
+        mpl_style.use(native_theme)
+
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.pack_start(self.canvas, True, True, 0)
+
+        self.x_data = []
+        self.temperature_data = []
+        self.pressure_data = []
+        self.humidity_data = []
+
+        self.axis = self.figure.add_subplot(1, 1, 1)
+        self.line1 = self.axis.plot([], [], marker="o", color="#F66151")[0]
+        self.axis.grid(axis="y")
+        self.figure.subplots_adjust(top=1, right=0.91, bottom=0.05, left=0.09)
+
+        self.sample_counter = 0
+        self.updateSensorsPlot()
+
+    def updateSensorsPlot(self):
+        api_endpoint = (
+            "http://" + host_name_pref + ":" + str(port_number_pref) + "/sensors/all"
+        )
+
+        response = requests.get(api_endpoint)
+
+        self.temperature = response.json()["temperature"]["value"]
+        self.pressure = response.json()["pressure"]["value"]
+        self.humidity = response.json()["humidity"]["value"]
+
+        self.sample_counter += 1
+        self.x_data.append(self.sample_counter)
+        self.temperature_data.append(self.temperature)
+        self.pressure_data.append(self.pressure)
+        self.humidity_data.append(self.humidity)
+
+        self.x_data = self.x_data[-10:]
+        self.temperature_data = self.temperature_data[-10:]
+        self.pressure_data = self.pressure_data[-10:]
+        self.humidity_data = self.humidity_data[-10:]
+
+        self.line1.set_data(self.x_data, self.temperature_data)
+
+        self.axis.relim()
+        self.axis.autoscale_view(True, True, True)
+
+        self.canvas.draw()
+
+        GLib.timeout_add(refresh_time_pref, self.updateSensorsPlot)
+
+
 class ControlView(Gtk.Box):
     def __init__(self):
-        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=20)
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
+
+        self.set_margin_top(20)
+        self.set_margin_end(10)
+        self.set_margin_bottom(10)
+        self.set_margin_start(10)
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -108,7 +187,12 @@ class ControlView(Gtk.Box):
 
 class SettingsView(Gtk.Box):
     def __init__(self):
-        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=20)
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
+
+        self.set_margin_top(20)
+        self.set_margin_end(10)
+        self.set_margin_bottom(10)
+        self.set_margin_start(10)
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -159,12 +243,13 @@ class SixthSense(Gtk.Window):
         self.set_default_size(800, 600)
         self.connect("destroy", Gtk.main_quit)
 
+        # View stack
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        self.stack.set_transition_duration(500)
+        self.stack.set_transition_duration(100)
 
         self.sensors_view = SensorsView()
-        self.plots_view = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.plots_view = PlotsView()
         self.control_view = ControlView()
         self.settings_view = SettingsView()
 
@@ -173,112 +258,35 @@ class SixthSense(Gtk.Window):
         self.stack.add_named(self.control_view, "Control")
         self.stack.add_named(self.settings_view, "Settings")
 
-        # TODO: Move this to a separate function
-        self.plots_view.set_margin_top(20)
-        self.plots_view.set_margin_end(10)
-        self.plots_view.set_margin_bottom(20)
-        self.plots_view.set_margin_start(10)
-        self.control_view.set_margin_top(20)
-        self.control_view.set_margin_end(10)
-        self.control_view.set_margin_bottom(20)
-        self.control_view.set_margin_start(10)
-        self.settings_view.set_margin_top(20)
-        self.settings_view.set_margin_end(10)
-        self.settings_view.set_margin_bottom(20)
-        self.settings_view.set_margin_start(10)
+        # Navigation bar
+        self.sensors_view_button = Gtk.Button(label="Sensors")
+        self.sensors_view_button.connect("clicked", self.switch_view, "Sensors")
+        self.plots_view_button = Gtk.Button(label="Plots")
+        self.plots_view_button.connect("clicked", self.switch_view, "Plots")
+        self.control_view_button = Gtk.Button(label="Control")
+        self.control_view_button.connect("clicked", self.switch_view, "Control")
+        self.settings_view_button = Gtk.Button(label="Settings")
+        self.settings_view_button.connect("clicked", self.switch_view, "Settings")
 
-        self.button1 = Gtk.Button(label="Sensors")
-        self.button1.connect("clicked", self.switch_view, "Sensors")
-        self.button2 = Gtk.Button(label="Plots")
-        self.button2.connect("clicked", self.switch_view, "Plots")
-        self.button3 = Gtk.Button(label="Control")
-        self.button3.connect("clicked", self.switch_view, "Control")
-        self.button4 = Gtk.Button(label="Settings")
-        self.button4.connect("clicked", self.switch_view, "Settings")
-
-        # Create a plot
-        native_theme = {
-            "text.color": "#454242",
-            "xtick.color": "#242424",
-            "ytick.color": "#454242",
-            "grid.color": "#454242",
-            "axes.facecolor": "#242424",
-            "axes.edgecolor": "#242424",
-            "axes.labelcolor": "#454242",
-            "figure.facecolor": "#242424",
-            "figure.edgecolor": "#242424",
-            "grid.linestyle": "--",
-        }
-
-        mpl_style.use(native_theme)
-
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.plots_view.pack_start(self.canvas, True, True, 0)
-
-        self.x_data = []
-        self.temperature_data = []
-        self.pressure_data = []
-        self.humidity_data = []
-
-        self.axis = self.figure.add_subplot(1, 1, 1)
-        self.line1 = self.axis.plot([], [], marker="o", color="#F66151")[0]
-        self.axis.grid(axis="y")
-        self.figure.subplots_adjust(top=1, right=0.91, bottom=0.05, left=0.09)
-
-        self.sample_counter = 0
-        self.updateSensorsPlot()
-
-        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(self.box)
 
-        buttons_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
-        self.box.pack_start(buttons_box, False, False, 0)
-        buttons_box.set_margin_top(10)
-        buttons_box.set_margin_end(10)
-        buttons_box.set_margin_bottom(5)
-        buttons_box.set_margin_start(10)
+        navigation_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.box.pack_start(navigation_bar, False, False, 0)
+        navigation_bar.set_margin_top(10)
+        navigation_bar.set_margin_end(10)
+        navigation_bar.set_margin_bottom(10)
+        navigation_bar.set_margin_start(10)
 
-        buttons_box.pack_start(self.button1, True, True, 0)
-        buttons_box.pack_start(self.button2, True, True, 0)
-        buttons_box.pack_start(self.button3, True, True, 0)
-        buttons_box.pack_start(self.button4, True, True, 0)
+        navigation_bar.pack_start(self.sensors_view_button, True, True, 0)
+        navigation_bar.pack_start(self.plots_view_button, True, True, 0)
+        navigation_bar.pack_start(self.control_view_button, True, True, 0)
+        navigation_bar.pack_start(self.settings_view_button, True, True, 0)
 
         self.box.pack_start(self.stack, True, True, 0)
 
     def switch_view(self, widget, view_name):
         self.stack.set_visible_child_name(view_name)
-
-    def updateSensorsPlot(self):
-        api_endpoint = (
-            "http://" + host_name_pref + ":" + str(port_number_pref) + "/sensors/all"
-        )
-
-        response = requests.get(api_endpoint)
-
-        self.temperature = response.json()["temperature"]["value"]
-        self.pressure = response.json()["pressure"]["value"]
-        self.humidity = response.json()["humidity"]["value"]
-
-        self.sample_counter += 1
-        self.x_data.append(self.sample_counter)
-        self.temperature_data.append(self.temperature)
-        self.pressure_data.append(self.pressure)
-        self.humidity_data.append(self.humidity)
-
-        self.x_data = self.x_data[-10:]
-        self.temperature_data = self.temperature_data[-10:]
-        self.pressure_data = self.pressure_data[-10:]
-        self.humidity_data = self.humidity_data[-10:]
-
-        self.line1.set_data(self.x_data, self.temperature_data)
-
-        self.axis.relim()
-        self.axis.autoscale_view(True, True, True)
-
-        self.canvas.draw()
-
-        GLib.timeout_add(refresh_time_pref, self.updateSensorsPlot)
 
 
 window = SixthSense()
