@@ -19,7 +19,14 @@ MARGIN = 8
 
 
 class SensorsView(Gtk.Box):
+    """
+    Represents the view for displaying sensor data in a list format.
+    """
+
     def __init__(self):
+        """
+        Initializes the SensorsView object.
+        """
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
         self.scrolled_window = Gtk.ScrolledWindow()
@@ -56,6 +63,9 @@ class SensorsView(Gtk.Box):
         GLib.timeout_add(REFRESH_TIME_PREF, self.updateSensorsData)
 
     def updateSensorsData(self):
+        """
+        Updates the sensor data displayed in the view.
+        """
         api_endpoint = (
             "http://" + HOST_NAME_PREF + ":" + str(PORT_NUMBER_PREF) + "/sensors/all"
         )
@@ -70,11 +80,16 @@ class SensorsView(Gtk.Box):
                 unit = j_value.get("unit", "-") or "-"
                 self.list_store.append([name, value, unit])
 
-        return True
-
 
 class PlotsView(Gtk.Box):
+    """
+    Represents the view for displaying sensor data in plots.
+    """
+
     def __init__(self):
+        """
+        Initializes the PlotsView object.
+        """
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
         self.set_margin_top(MARGIN)
@@ -118,6 +133,9 @@ class PlotsView(Gtk.Box):
         GLib.timeout_add(REFRESH_TIME_PREF, self.updateSensorsPlot)
 
     def updateSensorsPlot(self):
+        """
+        Updates the sensor plot with new data.
+        """
         api_endpoint = (
             "http://" + HOST_NAME_PREF + ":" + str(PORT_NUMBER_PREF) + "/sensors/all"
         )
@@ -146,11 +164,16 @@ class PlotsView(Gtk.Box):
 
         self.canvas.draw()
 
-        return True
-
 
 class ControlView(Gtk.Box):
+    """
+    Represents the view for controlling the LED strip.
+    """
+
     def __init__(self):
+        """
+        Initializes the ControlView object.
+        """
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
         self.led_color = (0, 0, 0, 0)
@@ -185,11 +208,17 @@ class ControlView(Gtk.Box):
         self.pack_end(self.apply_button, False, False, 0)
 
     def create_aligned_label(self, label):
+        """
+        Creates a label with left alignment.
+        """
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         hbox.pack_start(label, False, False, 0)
         return hbox
 
     def open_color_picker(self, widget):
+        """
+        Opens a color picker dialog.
+        """
         color_dialog = Gtk.ColorChooserDialog(title="Select a color", parent=window)
         color_dialog.set_transient_for(window)
 
@@ -218,6 +247,9 @@ class ControlView(Gtk.Box):
         color_dialog.destroy()
 
     def set_led_grid(self, widget):
+        """
+        Sets the color of the LED.
+        """
         led_id = int(self.id_spinbox.get_value())
         led_color = "{:02x}{:02x}{:02x}".format(
             int(self.led_color.red * 255),
@@ -240,7 +272,14 @@ class ControlView(Gtk.Box):
 
 
 class SettingsView(Gtk.Box):
+    """
+    Represents the view for the settings.
+    """
+
     def __init__(self):
+        """
+        Initializes the SettingsView object.
+        """
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
         self.set_margin_top(MARGIN * 10)
@@ -275,24 +314,40 @@ class SettingsView(Gtk.Box):
         self.restore_settings()
 
     def create_aligned_label(self, label):
+        """
+        Creates a label with left alignment.
+        """
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         hbox.pack_start(label, False, False, 0)
         return hbox
 
     def save_settings(self, widget):
+        """
+        Saves the settings.
+        """
         global HOST_NAME_PREF, PORT_NUMBER_PREF, REFRESH_TIME_PREF
         HOST_NAME_PREF = self.host_entry.get_text()
         PORT_NUMBER_PREF = self.port_entry.get_text()
         REFRESH_TIME_PREF = self.refresh_time_entry.get_text()
 
     def restore_settings(self):
+        """
+        Restores the settings.
+        """
         self.host_entry.set_text(HOST_NAME_PREF)
         self.port_entry.set_text(str(PORT_NUMBER_PREF))
         self.refresh_time_entry.set_text(str(REFRESH_TIME_PREF))
 
 
 class SixthSense(Gtk.Window):
+    """
+    Represents the main window.
+    """
+
     def __init__(self):
+        """
+        Initializes the main window.
+        """
         Gtk.Window.__init__(self, title="SixthSense")
         self.set_default_size(800, 600)
         self.connect("destroy", Gtk.main_quit)
@@ -343,10 +398,23 @@ class SixthSense(Gtk.Window):
         self.box.pack_start(self.stack, True, True, 0)
 
     def switch_view(self, widget, view_name):
+        """
+        Switches the view.
+        """
         self.stack.set_visible_child_name(view_name)
 
 
+"""
+The main function.
+"""
 window = SixthSense()
+
+"""
+Shows the window.
+"""
 window.show_all()
 
+"""
+Starts the Gtk main loop.
+"""
 Gtk.main()
