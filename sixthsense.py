@@ -296,7 +296,7 @@ class SettingsView(Gtk.Box):
         self.grid.set_row_spacing(MARGIN)
         self.pack_start(self.grid, False, False, 0)
 
-        self.host_name_label = Gtk.Label(label="Hostname:")
+        self.host_name_label = Gtk.Label(label="Host:")
         self.port_number_label = Gtk.Label(label="Port:")
         self.refresh_time_label = Gtk.Label(label="Sampling Time:")
 
