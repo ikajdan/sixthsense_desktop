@@ -80,6 +80,8 @@ class SensorsView(Gtk.Box):
                 unit = j_value.get("unit", "-") or "-"
                 self.list_store.append([name, value, unit])
 
+        return True
+
 
 class PlotsView(Gtk.Box):
     """
@@ -163,6 +165,8 @@ class PlotsView(Gtk.Box):
         self.axis.autoscale_view(True, True, True)
 
         self.canvas.draw()
+
+        return True
 
 
 class ControlView(Gtk.Box):
